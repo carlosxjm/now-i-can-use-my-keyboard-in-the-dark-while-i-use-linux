@@ -22,10 +22,15 @@ jobs:
           sudo apt-get install -y -qq python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 \
             gnome-settings-daemon-common xvfb dbus desktop-file-utils shellcheck
 
+      # Findings are also emitted as annotations, so they show up inline in PRs
       - name: Lint shell scripts
-        run: >-
-          shellcheck install.sh install-driver.sh uninstall.sh packaging/build-deb.sh tests/run.sh
-          packaging/debian/postinst packaging/debian/prerm
+        run: |
+          files="install.sh install-driver.sh uninstall.sh packaging/build-deb.sh tests/run.sh packaging/debian/postinst packaging/debian/prerm"
+          # shellcheck disable=SC2086
+          if ! shellcheck $files; then
+            shellcheck -f gcc $files | sed -E 's/^([^:]+):([0-9]+):([0-9]+): ([a-z]+): (.*)$/::error file=\1,line=\2,col=\3::\5/'
+            exit 1
+          fi
 
       - name: Validate desktop entry and udev rule
         run: |

@@ -12,6 +12,7 @@ NAME="my-keyboard-app"
 
 if [[ "${1:-}" == "--driver" ]]; then
   [[ $EUID -eq 0 ]] || { echo "To remove the driver: sudo $0 --driver" >&2; exit 1; }
+  # shellcheck disable=SC2016  # ${Status} is a dpkg-query format field, not a shell variable
   if dpkg-query -W -f='${Status}' "$NAME" 2>/dev/null | grep -q "install ok installed"; then
     echo "The driver belongs to the $NAME package. Use: sudo apt remove $NAME" >&2
     exit 1

@@ -19,6 +19,7 @@ VER="src.${REF:0:7}"
 SRC="/usr/src/$NAME-$VER"
 WORK="$(mktemp -d)"
 ADDED=""
+# shellcheck disable=SC2317  # only called through the EXIT trap
 cleanup() {
   rm -rf "$WORK"
   # A failed build must not leave a half-registered driver behind
