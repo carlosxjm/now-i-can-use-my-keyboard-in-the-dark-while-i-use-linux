@@ -1,0 +1,7 @@
+# Build only the tuxedo-drivers modules Clevo keyboards need
+# (replaces the upstream Kbuild, which builds modules for all TUXEDO hardware)
+obj-m += clevo_acpi.o
+obj-m += clevo_wmi.o
+obj-m += tuxedo_keyboard.o
+obj-m += uniwill_wmi.o
+obj-y += tuxedo_compatibility_check/

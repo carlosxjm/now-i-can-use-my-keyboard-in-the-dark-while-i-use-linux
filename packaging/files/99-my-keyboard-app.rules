@@ -1,0 +1,2 @@
+# Let users control the keyboard backlight (Avell / Clevo)
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*kbd_backlight*", RUN+="/bin/sh -c 'chmod 0666 /sys%p/brightness; [ -e /sys%p/multi_intensity ] && chmod 0666 /sys%p/multi_intensity || true'"

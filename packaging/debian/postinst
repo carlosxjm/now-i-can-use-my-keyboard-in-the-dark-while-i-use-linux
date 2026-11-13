@@ -1,0 +1,31 @@
+#!/bin/sh
+set -e
+
+NAME="@NAME@"
+DKMS_VERSION="@DKMS_VERSION@"
+
+if [ "$1" = "configure" ]; then
+  # Remove the driver from the older manual install (install-driver.sh), which
+  # builds the same kernel modules under a different DKMS name.
+  for legacy in avell-clevo-kbd; do
+    for v in $(dkms status -m "$legacy" 2>/dev/null | sed -n 's|^[^/]*/\([^,:]*\).*|\1|p' | sort -u); do
+      dkms remove -m "$legacy" -v "$v" --all >/dev/null 2>&1 || true
+      rm -rf "/usr/src/$legacy-$v"
+    done
+  done
+  rm -f /etc/udev/rules.d/99-avell-kbd.rules /etc/modules-load.d/avell-kbd.conf
+
+  dkms add -m "$NAME" -v "$DKMS_VERSION" >/dev/null 2>&1 || true
+  if ! dkms install -m "$NAME" -v "$DKMS_VERSION"; then
+    echo "WARNING: failed to build the keyboard driver with DKMS." >&2
+    echo "         See /var/lib/dkms/$NAME/$DKMS_VERSION/build/make.log" >&2
+  fi
+
+  udevadm control --reload-rules 2>/dev/null || true
+  modprobe clevo_acpi 2>/dev/null || modprobe clevo_wmi 2>/dev/null || true
+  udevadm trigger --subsystem-match=leds --action=add 2>/dev/null || true
+
+  echo "Keyboard RGB installed. Log out and back in (or run: systemctl --user start avell-kbd) to get the tray icon."
+fi
+
+exit 0

@@ -1,0 +1,15 @@
+[Unit]
+Description=Keyboard RGB (tray icon, effects and color restore)
+PartOf=graphical-session.target
+After=graphical-session.target
+# skip system users such as the login screen (gdm)
+ConditionUser=!@system
+
+[Service]
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/avell-kbd --daemon
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

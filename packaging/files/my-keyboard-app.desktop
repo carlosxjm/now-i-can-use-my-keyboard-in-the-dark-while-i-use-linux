@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Keyboard RGB
+Comment=Keyboard backlight colors and effects
+Exec=/usr/bin/avell-kbd
+Icon=input-keyboard
+Terminal=false
+Type=Application
+Categories=Settings;HardwareSettings;
+Keywords=keyboard;rgb;backlight;clevo;avell;
+StartupWMClass=vet.local.AvellKbd
