@@ -45,7 +45,7 @@ fi
 # delete the GNOME shortcut while the app is still installed
 [[ -x "$PREFIX/bin/avell-kbd" ]] && "$PREFIX/bin/avell-kbd" --remove-shortcut 2>/dev/null
 
-rm -rf "$PREFIX/lib/$NAME"
+rm -rf "${PREFIX:?}/lib/${NAME:?}"
 rm -f "$PREFIX/bin/avell-kbd" \
       "$PREFIX/share/applications/io.github.carlosxjm.KeyboardRGB.desktop" \
       "$PREFIX/share/applications/vet.local.AvellKbd.desktop" \

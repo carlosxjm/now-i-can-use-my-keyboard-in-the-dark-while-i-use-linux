@@ -99,7 +99,7 @@ sleep 1
 udevadm trigger --subsystem-match=leds --action=add
 
 echo
-if ls /sys/class/leds/ | grep -q kbd_backlight; then
+if compgen -G '/sys/class/leds/*kbd_backlight*' >/dev/null; then
   echo "✔ Keyboard detected:"
   ls -d /sys/class/leds/*kbd_backlight*
   echo
