@@ -86,7 +86,7 @@ jobs:
           if dkms status | grep -q my-keyboard-app; then echo "DKMS module left behind"; exit 1; fi
           test ! -e /usr/bin/avell-kbd
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: my-keyboard-app-deb
           path: dist/*.deb
