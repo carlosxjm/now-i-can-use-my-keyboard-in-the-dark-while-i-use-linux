@@ -5,20 +5,26 @@ NAME="@NAME@"
 DKMS_VERSION="@DKMS_VERSION@"
 
 if [ "$1" = "configure" ]; then
-  # Remove the driver from the older manual install (install-driver.sh), which
-  # builds the same kernel modules under a different DKMS name.
-  for legacy in avell-clevo-kbd; do
-    for v in $(dkms status -m "$legacy" 2>/dev/null | sed -n 's|^[^/]*/\([^,:]*\).*|\1|p' | sort -u); do
-      dkms remove -m "$legacy" -v "$v" --all >/dev/null 2>&1 || true
-      rm -rf "/usr/src/$legacy-$v"
-    done
-  done
-  rm -f /etc/udev/rules.d/99-avell-kbd.rules /etc/modules-load.d/avell-kbd.conf
-
   dkms add -m "$NAME" -v "$DKMS_VERSION" >/dev/null 2>&1 || true
-  if ! dkms install -m "$NAME" -v "$DKMS_VERSION"; then
-    echo "WARNING: failed to build the keyboard driver with DKMS." >&2
-    echo "         See /var/lib/dkms/$NAME/$DKMS_VERSION/build/make.log" >&2
+  if dkms build -m "$NAME" -v "$DKMS_VERSION"; then
+    # Built fine: now replace the driver of an older manual install (install-driver.sh),
+    # which provides the same kernel modules under another DKMS name/version.
+    for legacy in avell-clevo-kbd "$NAME"; do
+      for v in $(dkms status -m "$legacy" 2>/dev/null | sed -n 's|^[^/]*/\([^,:]*\).*|\1|p' | sort -u); do
+        [ "$legacy/$v" = "$NAME/$DKMS_VERSION" ] && continue
+        dkms remove -m "$legacy" -v "$v" --all >/dev/null 2>&1 || true
+        rm -rf "/usr/src/$legacy-$v"
+      done
+    done
+    rm -f /etc/udev/rules.d/99-avell-kbd.rules /etc/modules-load.d/avell-kbd.conf \
+          /etc/udev/rules.d/99-my-keyboard-app.rules /etc/modules-load.d/my-keyboard-app.conf
+    dkms install -m "$NAME" -v "$DKMS_VERSION" || BUILD_FAILED=1
+  else
+    BUILD_FAILED=1
+  fi
+  if [ -n "${BUILD_FAILED:-}" ]; then
+    echo "WARNING: failed to build the keyboard driver with DKMS; any previously installed" >&2
+    echo "         driver was left in place. See /var/lib/dkms/$NAME/$DKMS_VERSION/build/make.log" >&2
   fi
 
   udevadm control --reload-rules 2>/dev/null || true

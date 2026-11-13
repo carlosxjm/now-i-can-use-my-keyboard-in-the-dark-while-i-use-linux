@@ -7,4 +7,4 @@ Terminal=false
 Type=Application
 Categories=Settings;HardwareSettings;
 Keywords=keyboard;rgb;backlight;clevo;avell;
-StartupWMClass=vet.local.AvellKbd
+StartupNotify=true

@@ -4,7 +4,7 @@
 # Version:
 #   - on a tag vX.Y.Z           -> X.Y.Z
 #   - N commits after tag vX.Y.Z -> X.Y.Z+gitN.<sha>
-#   - no tags yet               -> <VERSION file>~gitN.<sha>
+#   - no tags yet               -> <keyboard_rgb.__version__>~gitN.<sha>
 #   - override with VERSION=... ./packaging/build-deb.sh
 set -euo pipefail
 umask 022
@@ -16,7 +16,7 @@ TUXEDO_REF="$(tr -d '[:space:]' < "$ROOT/packaging/tuxedo-drivers.ref")"
 
 # ---------------------------------------------------------------- version
 if [[ -z "${VERSION:-}" ]]; then
-  BASE="$(tr -d '[:space:]' < "$ROOT/VERSION")"
+  BASE="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$ROOT/keyboard_rgb/__init__.py")"
   if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
     if DESC="$(git -C "$ROOT" describe --tags --match 'v[0-9]*' 2>/dev/null)"; then
       # v1.2.0 | v1.2.0-5-gabc1234
@@ -51,8 +51,12 @@ cp "$ROOT/packaging/driver/Kbuild" "$SRC/Kbuild"
 sed "s|@NAME@|$NAME|; s|@VERSION@|$DKMS_VERSION|" "$ROOT/packaging/driver/dkms.conf.in" > "$SRC/dkms.conf"
 
 # ---------------------------------------------------------------- app files
-install -Dm755 "$ROOT/avell_kbd.py"                          "$PKG/usr/bin/avell-kbd"
-install -Dm644 "$ROOT/packaging/files/my-keyboard-app.desktop" "$PKG/usr/share/applications/$NAME.desktop"
+APP_ID="io.github.carlosxjm.KeyboardRGB"
+install -d "$PKG/usr/lib/$NAME"
+cp -r "$ROOT/keyboard_rgb" "$PKG/usr/lib/$NAME/"
+find "$PKG/usr/lib/$NAME" -name __pycache__ -type d -prune -exec rm -rf {} +
+install -Dm755 "$ROOT/bin/avell-kbd"                         "$PKG/usr/bin/avell-kbd"
+install -Dm644 "$ROOT/packaging/files/$APP_ID.desktop"       "$PKG/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$ROOT/packaging/files/avell-kbd.service"     "$PKG/usr/lib/systemd/user/avell-kbd.service"
 install -Dm644 "$ROOT/packaging/files/99-my-keyboard-app.rules" "$PKG/usr/lib/udev/rules.d/99-$NAME.rules"
 install -d "$PKG/usr/lib/modules-load.d"
@@ -67,6 +71,10 @@ cat > "$DOC/copyright" <<EOF
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: $NAME
 Source: $HOMEPAGE
+
+Files: *
+Copyright: 2026 carlosxjm and contributors
+License: GPL-2.0-or-later
 
 Files: usr/src/$NAME-$DKMS_VERSION/*
 Copyright: 2018-2025 TUXEDO Computers GmbH <tux@tuxedocomputers.com>
@@ -91,7 +99,7 @@ Version: $VERSION
 Architecture: all
 Maintainer: $MAINTAINER
 Installed-Size: $(du -sk --exclude=DEBIAN "$PKG" | cut -f1)
-Depends: dkms, kmod, udev, python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, gir1.2-graphene-1.0
+Depends: dkms, kmod, udev, python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0 (>= 4.10), gir1.2-adw-1 (>= 1.4), gir1.2-graphene-1.0
 Recommends: linux-headers-generic | linux-headers, gnome-shell-extension-appindicator
 Conflicts: tuxedo-drivers, tuxedo-keyboard
 Section: utils

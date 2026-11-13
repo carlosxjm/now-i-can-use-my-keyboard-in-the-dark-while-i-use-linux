@@ -1,0 +1,25 @@
+#!/usr/bin/python3
+"""Launcher for Keyboard RGB.
+
+Uses the system Python on purpose: the app needs the distribution's PyGObject,
+GTK4 and libadwaita, which a pyenv/virtualenv `python3` usually doesn't have.
+
+Looks for the keyboard_rgb package next to this launcher:
+  <prefix>/bin/avell-kbd  ->  <prefix>/lib/my-keyboard-app/keyboard_rgb   (installed)
+  <repo>/bin/avell-kbd    ->  <repo>/keyboard_rgb                         (git checkout)
+"""
+
+import os
+import sys
+
+here = os.path.dirname(os.path.abspath(__file__))
+for candidate in (os.path.join(here, "..", "lib", "my-keyboard-app"), os.path.join(here, "..")):
+    if os.path.isfile(os.path.join(candidate, "keyboard_rgb", "__init__.py")):
+        sys.path.insert(0, os.path.realpath(candidate))
+        break
+
+os.environ["KEYBOARD_RGB_LAUNCHER"] = os.path.abspath(__file__)
+
+from keyboard_rgb.__main__ import main  # noqa: E402
+
+sys.exit(main())

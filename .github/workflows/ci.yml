@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 \
+            gnome-settings-daemon-common xvfb dbus desktop-file-utils shellcheck
+
+      - name: Lint shell scripts
+        run: >-
+          shellcheck install.sh install-driver.sh uninstall.sh packaging/build-deb.sh tests/run.sh
+          packaging/debian/postinst packaging/debian/prerm
+
+      - name: Validate desktop entry and udev rule
+        run: |
+          desktop-file-validate packaging/files/*.desktop
+          udevadm verify packaging/files/*.rules
+
+      - name: Check version consistency
+        run: |
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' keyboard_rgb/__init__.py)"
+          echo "keyboard_rgb.__version__ = $version"
+          grep -q "^## \[$version\]" CHANGELOG.md || { echo "CHANGELOG.md has no entry for $version"; exit 1; }
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$version" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match version $version"; exit 1
+          fi
+
+      # System python on purpose: the app uses the distribution's PyGObject.
+      # xvfb-run gives the GTK tests a display; dbus-run-session a private session bus.
+      - name: Unit, GUI and D-Bus tests (mocked hardware)
+        run: ./tests/run.sh -v
+
+  package:
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # publish releases on tags
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags, used to compute the version
+
+      - name: Build package
+        run: ./packaging/build-deb.sh
+
+      - name: Show package info
+        run: |
+          dpkg-deb --info dist/*.deb
+          dpkg-deb --contents dist/*.deb | grep -v '/usr/src/.*/.*/'
+
+      # Installs the .deb on the runner: proves the dependencies resolve and that
+      # the driver compiles with DKMS against the runner's kernel. There is no
+      # Clevo hardware here, so the module is not expected to find a device.
+      - name: Test install / remove
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "linux-headers-$(uname -r)"
+          sudo apt-get install -y ./dist/*.deb
+          dkms status | tee /dev/stderr | grep -q 'my-keyboard-app/.*: installed'
+          /usr/bin/avell-kbd --version
+          /usr/bin/avell-kbd --status || true
+          test -f /usr/lib/udev/rules.d/99-my-keyboard-app.rules
+          test -L /usr/lib/systemd/user/graphical-session.target.wants/avell-kbd.service
+          sudo apt-get remove -y my-keyboard-app
+          if dkms status | grep -q my-keyboard-app; then echo "DKMS module left behind"; exit 1; fi
+          test ! -e /usr/bin/avell-kbd
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-keyboard-app-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '/^## \[/ { p = index($0, "## [" v "]") == 1; next } p' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/*.deb --title "$GITHUB_REF_NAME" --notes-file notes.md

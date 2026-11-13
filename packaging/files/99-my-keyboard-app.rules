@@ -1,2 +1,7 @@
-# Let users control the keyboard backlight (Avell / Clevo)
-ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*kbd_backlight*", RUN+="/bin/sh -c 'chmod 0666 /sys%p/brightness; [ -e /sys%p/multi_intensity ] && chmod 0666 /sys%p/multi_intensity || true'"
+# Keyboard RGB (my-keyboard-app): let local users control the keyboard backlight.
+#
+# Scope: only LED devices created by the tuxedo_keyboard driver (Clevo keyboards),
+# and only their brightness / multi_intensity attributes. Other vendors' keyboard
+# LEDs are not touched. See SECURITY.md for why this is world-writable.
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:kbd_backlight*", DRIVERS=="tuxedo_keyboard", RUN+="/bin/chmod 0666 /sys%p/brightness"
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:kbd_backlight*", DRIVERS=="tuxedo_keyboard", TEST=="multi_intensity", RUN+="/bin/chmod 0666 /sys%p/multi_intensity"
